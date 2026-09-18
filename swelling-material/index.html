@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalkulator Swelling Material</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#007E7A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Swelling Dewa">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --teal:#007E7A;--teal-hover:#00605D;--navy:#19325C;--gold:#EDB111;--red:#E81C24;
+      --font-heading:'Montserrat',sans-serif;--font-body:'Open Sans',system-ui,sans-serif;
+    }
+    :root[data-theme="light"]{
+      --page-bg:#F3F4F6;--card-bg:#FFFFFF;--card-bg2:#FAF9F5;--border:#E5E7EB;
+      --text-primary:#374151;--text-secondary:#5B6472;
+      --input-bg:#FFFFFF;--input-border:#D1D5DB;--track-bg:#EEF1F7;
+      --error-bg:#FDECEB;--error-border:#E81C24;--error-text:#8A1116;
+    }
+    :root[data-theme="dark"]{
+      --page-bg:#0F1826;--card-bg:#182338;--card-bg2:#131F33;--border:#2A3A55;
+      --text-primary:#E7EAF0;--text-secondary:#9CA6B8;
+      --input-bg:#0F1826;--input-border:#33456A;--track-bg:#0F1826;
+      --error-bg:#3A1520;--error-border:#E81C24;--error-text:#FF9DA2;
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    html{-webkit-text-size-adjust:100%;}
+    body{margin:0;min-height:100dvh;background:var(--page-bg);color:var(--text-primary);
+      font-family:var(--font-body);line-height:1.5;transition:background .2s;}
+    a{color:var(--teal);}
+    a:hover{color:var(--teal-hover);}
+    img,svg{display:block;}
+    input,button{font:inherit;color:inherit;}
+    button{cursor:pointer;background:none;border:none;}
+    input[type="number"]{-moz-appearance:textfield;}
+
+    .page{max-width:460px;margin:0 auto;padding:24px 20px 56px;}
+
+    .header-row{display:flex;align-items:center;justify-content:space-between;padding:2px 0 16px;}
+    .app-title{font-family:var(--font-heading);font-weight:800;font-size:19px;letter-spacing:0.2px;}
+    .app-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+    .theme-toggle{width:42px;height:42px;border-radius:21px;background:var(--card-bg);
+      border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    .card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;}
+    .pill{display:inline-block;font-family:var(--font-heading);font-weight:700;font-size:10.5px;
+      letter-spacing:0.6px;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:12px;color:#fff;}
+    .pill-teal{background:var(--teal);}
+    .pill-navy{background:var(--navy);}
+    .pill-gold{background:var(--gold);color:var(--navy);}
+
+    .field-row{display:flex;gap:10px;}
+    .field{flex:1;}
+    .field label{font-size:11.5px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+    .field input{width:100%;margin-top:5px;font-size:16px;font-weight:700;padding:8px 10px;
+      border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);
+      color:var(--text-primary);box-sizing:border-box;}
+    .total-run{display:flex;align-items:center;justify-content:space-between;margin-top:10px;
+      background:var(--track-bg);border-radius:10px;padding:9px 12px;}
+    .total-run-label{font-size:12.5px;color:var(--text-secondary);font-weight:600;}
+    .total-run-value{font-family:var(--font-heading);font-size:14px;font-weight:800;color:var(--text-primary);}
+
+    .seg-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--card-bg2);}
+    .seg-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px;}
+    .seg-label{font-family:var(--font-heading);font-weight:700;font-size:13px;color:var(--text-primary);}
+    .seg-btns{display:flex;gap:6px;flex-shrink:0;}
+    .icon-btn{width:26px;height:26px;border-radius:8px;background:var(--track-bg);color:var(--text-secondary);
+      border:none;display:flex;align-items:center;justify-content:center;font-size:10px;}
+    .icon-btn:disabled{cursor:default;}
+    .icon-btn.remove{background:transparent;color:var(--red);border:1px solid var(--red);font-size:12px;}
+    .seg-bottom{display:flex;gap:8px;align-items:center;}
+    .type-toggle{display:flex;background:var(--track-bg);border-radius:10px;padding:3px;gap:2px;flex-shrink:0;}
+    .type-btn{padding:7px 11px;border-radius:8px;border:none;font-size:12px;font-weight:700;
+      background:transparent;color:var(--text-secondary);}
+    .type-btn.active-soft{background:var(--teal);color:#fff;}
+    .type-btn.active-hard{background:var(--navy);color:#fff;}
+    .seg-length{flex:1;min-width:0;text-align:right;padding:8px 10px;border-radius:8px;
+      border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-primary);
+      font-size:14px;font-weight:600;box-sizing:border-box;}
+    .unit-label{font-size:12px;color:var(--text-secondary);flex-shrink:0;}
+    .add-seg-btn{width:100%;padding:12px;border-radius:12px;border:1.5px dashed var(--input-border);
+      background:transparent;color:var(--text-secondary);font-weight:700;font-size:13px;}
+
+    .diagram-heading{font-size:11.5px;font-weight:700;color:var(--text-primary);margin:8px 0 8px;}
+    .box-row{margin-bottom:12px;}
+    .box-row-label{font-size:10px;font-weight:700;color:var(--text-secondary);
+      text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px;}
+    .box-bar{display:flex;width:100%;height:20px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+    .box-chunk{height:100%;display:flex;align-items:center;justify-content:center;
+      border-right:1px solid rgba(255,255,255,0.35);box-sizing:border-box;overflow:hidden;}
+    .box-chunk span{font-size:9.5px;font-weight:700;color:#fff;text-align:center;padding:0 2px;white-space:nowrap;}
+    .box-lengths{display:flex;width:100%;margin-top:4px;}
+    .box-lengths div{text-align:center;font-size:9.5px;color:var(--text-secondary);box-sizing:border-box;}
+    .diagram-total{font-size:11px;color:var(--text-secondary);margin-bottom:14px;}
+    .diagram-total strong{color:var(--text-primary);}
+    .insitu-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+    .insitu-desc{font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5;}
+    .legend-row{display:flex;gap:16px;margin-top:4px;}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-secondary);}
+    .legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    .stat-cell{background:var(--track-bg);border-radius:12px;padding:10px;}
+    .stat-label{font-size:8px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.2px;}
+    .stat-value{font-family:var(--font-heading);font-weight:800;font-size:15px;color:var(--text-primary);margin-top:4px;}
+    .swell-banner{display:flex;align-items:center;justify-content:space-between;background:var(--gold);
+      border-radius:12px;padding:12px 14px;margin-top:10px;}
+    .swell-label{font-size:10.5px;color:var(--navy);text-transform:uppercase;letter-spacing:0.3px;font-weight:700;}
+    .swell-sub{font-size:11px;color:#3d2f05;margin-top:2px;}
+    .swell-value{font-family:var(--font-heading);font-weight:800;font-size:20px;color:var(--navy);}
+    .detail-box{margin-top:14px;background:var(--track-bg);border-radius:10px;padding:10px 12px;
+      font-family:Menlo,Consolas,monospace;font-size:10.5px;line-height:1.75;color:var(--text-secondary);}
+    .detail-title{font-weight:700;color:var(--text-primary);margin-bottom:4px;font-family:var(--font-body);
+      font-size:11px;text-transform:uppercase;letter-spacing:0.3px;}
+    .detail-formula-indent{margin-bottom:6px;}
+    .rincian-title{font-size:11.5px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;
+      letter-spacing:0.4px;margin-bottom:6px;margin-top:16px;}
+    .rincian-row{padding:10px 0;border-bottom:1px solid var(--border);}
+    .rincian-top{display:flex;justify-content:space-between;align-items:center;}
+    .rincian-name{font-weight:700;font-size:13px;color:var(--text-primary);}
+    .rincian-actual{font-size:11px;color:var(--text-secondary);margin-top:2px;}
+    .rincian-right{text-align:right;}
+    .rincian-interval{font-size:11px;color:var(--text-secondary);}
+    .rincian-recover{font-size:11px;color:var(--text-secondary);margin-top:2px;}
+    .rincian-formula{margin-top:8px;background:var(--track-bg);border-radius:8px;padding:8px 10px;
+      font-family:Menlo,Consolas,monospace;font-size:10px;line-height:1.7;color:var(--text-secondary);}
+
+    .error-banner{background:var(--error-bg);border:1px solid var(--error-border);border-radius:16px;
+      padding:14px 16px;display:flex;gap:10px;align-items:flex-start;}
+    .error-badge{width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-size:12px;
+      font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+    .error-text{font-size:12.5px;color:var(--error-text);line-height:1.55;}
+  </style>
+</head>
+<body>
+
+  <!-- PWA Install Banner -->
+  <div id="installBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+    background:var(--teal);color:#fff;padding:1rem 1.25rem;
+    align-items:center;justify-content:space-between;gap:1rem;
+    box-shadow:0 -4px 20px rgba(0,0,0,.15);">
+    <div style="font-size:.875rem;font-weight:600;line-height:1.4;">
+      📲 Install aplikasi ini<br>
+      <span style="font-weight:400;opacity:.85;font-size:.8rem;">Bisa dipakai offline setelah diinstall</span>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0;">
+      <button id="installBtn" style="background:#fff;color:var(--teal);border:none;
+        padding:.5rem 1rem;border-radius:.5rem;font-weight:700;cursor:pointer;font-size:.875rem;">
+        Install
+      </button>
+      <button id="dismissBtn" style="background:rgba(255,255,255,.2);color:#fff;border:none;
+        padding:.5rem .75rem;border-radius:.5rem;cursor:pointer;font-size:.875rem;">
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <main class="page">
+    <div id="app"></div>
+  </main>
+
+<script>
+  const MOON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" fill="#EDB111"></circle><g stroke="#EDB111" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"></line><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"></line><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"></line><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"></line></g></svg>';
+  const SUN_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z" fill="#19325C"></path></svg>';
+
+  const THEME = {
+    light: { trackBg: '#EEF1F7' },
+    dark:  { trackBg: '#0F1826' },
+  };
+
+  function loadDarkPref(){
+    try{
+      const stored = localStorage.getItem('swelling-dark');
+      if(stored === '1') return true;
+      if(stored === '0') return false;
+    }catch(e){}
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function saveDarkPref(dark){
+    try{ localStorage.setItem('swelling-dark', dark ? '1' : '0'); }catch(e){}
+  }
+
+  const state = {
+    dark: loadDarkPref(),
+    fromM: 0,
+    toM: 1,
+    segments: [],
+    nextId: 1,
+  };
+
+  const MIN_INSITU_CM = 15;
+
+  function computeDerived(s){
+    const totalRunM = (Number(s.toM) || 0) - (Number(s.fromM) || 0);
+    const totalRunCm = totalRunM * 100;
+    const softSegs = s.segments.filter(x => x.type === 'soft');
+    const hardSegs = s.segments.filter(x => x.type === 'hard');
+    const sumHard = hardSegs.reduce((a, x) => a + (Number(x.length) || 0), 0);
+    const sumSoft = softSegs.reduce((a, x) => a + (Number(x.length) || 0), 0);
+    const totalRecoveredCm = sumHard + sumSoft;
+    const actualRunSoft = totalRunCm - sumHard;
+
+    let errorMsg = '';
+    if (totalRunCm <= 0) errorMsg = 'Interval "Sampai" harus lebih besar dari "Dari" agar Total Run lebih dari 0 meter.';
+    else if (s.segments.length === 0) errorMsg = 'Tambahkan minimal satu segmen material untuk mulai menghitung.';
+    else if (s.segments.some(x => !(Number(x.length) > 0))) errorMsg = 'Semua segmen harus punya panjang aktual lebih dari 0 cm.';
+    else if (sumHard >= totalRunCm) errorMsg = 'Total panjang Hard Material melebihi atau sama dengan Total Run — tidak ada ruang untuk Soft Material.';
+    else if (softSegs.length === 0) errorMsg = 'Tambahkan minimal satu segmen Soft Material untuk menghitung swelling.';
+
+    const baseValid = !errorMsg;
+
+    let softCount = 0, hardCount = 0;
+    const segmentsView = s.segments.map((x, i) => {
+      const len = Number(x.length) || 0;
+      const isSoft = x.type === 'soft';
+      if (isSoft) softCount++; else hardCount++;
+      const label = isSoft ? ('SM A' + softCount) : ('HM B' + hardCount);
+      const interval = (baseValid && isSoft && sumSoft > 0) ? (len / sumSoft) * actualRunSoft : null;
+      const recover = (interval && interval > 0) ? len / interval : null;
+      const ratio = (isSoft && sumSoft > 0) ? len / sumSoft : null;
+      const intervalFormula = interval != null
+        ? ('(' + len + ' / ' + sumSoft.toFixed(1) + ') × ' + actualRunSoft.toFixed(2) + ' = ' + ratio.toFixed(4) + ' × ' + actualRunSoft.toFixed(2) + ' = ' + interval.toFixed(2) + ' cm')
+        : null;
+      const recoverFormula = (interval != null && recover != null)
+        ? (len + ' / ' + interval.toFixed(2) + ' = ' + recover.toFixed(2) + '×')
+        : null;
+      return {
+        id: x.id, type: x.type, length: x.length, isSoft, label,
+        lengthRaw: len, intervalRaw: interval,
+        interval: interval != null ? interval.toFixed(2) : null,
+        recover: recover != null ? recover.toFixed(2) : null,
+        intervalFormula, recoverFormula,
+        isFirst: i === 0, isLast: i === s.segments.length - 1,
+      };
+    });
+
+    if (baseValid && !errorMsg) {
+      const shortSeg = segmentsView.find(x => x.isSoft && x.intervalRaw != null && x.intervalRaw < MIN_INSITU_CM);
+      if (shortSeg) {
+        errorMsg = 'Segmen ' + shortSeg.label + ': panjang In-Situ hasil estimasi hanya ' + shortSeg.intervalRaw.toFixed(2) + ' cm (di bawah minimum ' + MIN_INSITU_CM + ' cm). Kurangi panjang aktual segmen ini atau perbesar interval Dari/Sampai.';
+      }
+    }
+
+    const valid = !errorMsg;
+    const overallFactor = valid ? sumSoft / actualRunSoft : 0;
+    const swellPercent = valid ? (overallFactor - 1) * 100 : 0;
+    const softResults = segmentsView.filter(x => x.isSoft);
+
+    const softListStr = softSegs.map(x => (Number(x.length) || 0)).join(' + ') || '0';
+    const overallDetail = {
+      runFormula: totalRunCm.toFixed(0) + ' cm − ' + sumHard.toFixed(1) + ' cm = ' + actualRunSoft.toFixed(2) + ' cm',
+      sumFormula: softListStr + ' = ' + sumSoft.toFixed(1) + ' cm',
+      factorFormula: sumSoft.toFixed(1) + ' / ' + actualRunSoft.toFixed(2) + ' = ' + overallFactor.toFixed(2) + '×',
+    };
+
+    return {
+      totalRunM, totalRunCm, sumHard, sumSoft, totalRecoveredCm, actualRunSoft,
+      errorMsg, valid, segmentsView, overallFactor, swellPercent, softResults, overallDetail,
+    };
+  }
+
+  function buildCoreRows(segs, trackBg){
+    const rowSize = 100;
+    const rows = [];
+    let currentRow = [];
+    let rowCursor = 0;
+    segs.forEach(s => {
+      let remaining = Number(s.length) || 0;
+      while (remaining > 1e-6) {
+        const space = rowSize - rowCursor;
+        const take = Math.min(remaining, space);
+        currentRow.push({ label: s.label, isSoft: s.isSoft, widthPct: take, barBg: s.isSoft ? '#007E7A' : '#19325C' });
+        rowCursor += take;
+        remaining -= take;
+        if (rowCursor >= rowSize - 1e-6) {
+          rows.push({ chunks: currentRow, filled: rowCursor });
+          currentRow = [];
+          rowCursor = 0;
+        }
+      }
+    });
+    if (currentRow.length > 0 || rows.length === 0) {
+      rows.push({ chunks: currentRow, filled: rowCursor });
+    }
+    return rows.map((r, i) => {
+      const chunks = r.chunks.slice();
+      const empty = rowSize - r.filled;
+      if (empty > 1e-6) chunks.push({ label: '', isSoft: null, widthPct: empty, barBg: trackBg });
+      return {
+        rangeLabel: 'Box ' + (i + 1) + ' · ' + (i * 100) + '–' + (i * 100 + Math.round(r.filled)) + ' cm',
+        chunks: chunks.map(c => ({
+          ...c,
+          lengthLabel: c.isSoft === null ? '' : (Math.round(c.widthPct * 10) / 10) + ' cm',
+          widthPct: c.widthPct.toFixed(2),
+        })),
+      };
+    });
+  }
+
+  function renderCoreRowsHtml(rows){
+    return rows.map(row => `
+      <div class="box-row">
+        <div class="box-row-label">${row.rangeLabel}</div>
+        <div class="box-bar">
+          ${row.chunks.map(c => `<div class="box-chunk" style="width:${c.widthPct}%;background:${c.barBg};"><span>${c.label}</span></div>`).join('')}
+        </div>
+        <div class="box-lengths">
+          ${row.chunks.map(c => `<div style="width:${c.widthPct}%;">${c.lengthLabel}</div>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderSegmentsHtml(segmentsView){
+    return segmentsView.map(s => `
+      <div class="seg-card">
+        <div class="seg-top">
+          <div class="seg-label">${s.label}</div>
+          <div class="seg-btns">
+            <button type="button" class="icon-btn" data-action="moveUp" data-id="${s.id}" ${s.isFirst ? 'disabled' : ''} style="opacity:${s.isFirst ? 0.3 : 1};">▲</button>
+            <button type="button" class="icon-btn" data-action="moveDown" data-id="${s.id}" ${s.isLast ? 'disabled' : ''} style="opacity:${s.isLast ? 0.3 : 1};">▼</button>
+            <button type="button" class="icon-btn remove" data-action="removeSegment" data-id="${s.id}">✕</button>
+          </div>
+        </div>
+        <div class="seg-bottom">
+          <div class="type-toggle">
+            <button type="button" class="type-btn ${s.isSoft ? 'active-soft' : ''}" data-action="setSoft" data-id="${s.id}">Soft</button>
+            <button type="button" class="type-btn ${!s.isSoft ? 'active-hard' : ''}" data-action="setHard" data-id="${s.id}">Hard</button>
+          </div>
+          <input class="seg-length" type="number" min="0" step="any" value="${s.length}" data-field="segLength" data-id="${s.id}" />
+          <span class="unit-label">cm</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const app = document.getElementById('app');
+
+  function render(){
+    document.documentElement.setAttribute('data-theme', state.dark ? 'dark' : 'light');
+    const trackBg = state.dark ? THEME.dark.trackBg : THEME.light.trackBg;
+    const d = computeDerived(state);
+
+    const coreRows = buildCoreRows(
+      d.segmentsView.map(s => ({ label: s.label, isSoft: s.isSoft, length: s.lengthRaw })),
+      trackBg
+    );
+
+    let depthCursor = Number(state.fromM) || 0;
+    const depthLogSegs = d.valid ? d.segmentsView.map(s => {
+      const lenCm = s.isSoft ? (s.intervalRaw != null ? s.intervalRaw : 0) : s.lengthRaw;
+      const start = depthCursor;
+      const end = depthCursor + lenCm / 100;
+      depthCursor = end;
+      return { isSoft: s.isSoft, length: lenCm, label: start.toFixed(2) + '–' + end.toFixed(2) };
+    }) : [];
+    const depthLogRows = d.valid ? buildCoreRows(depthLogSegs, trackBg) : [];
+
+    const showDiagram = state.segments.length > 0;
+
+    app.innerHTML = `
+      <div class="header-row">
+        <div>
+          <div class="app-title">Swelling Dewa</div>
+          <div class="app-sub">Kalkulator Interval &amp; Recovery by Trio</div>
+        </div>
+        <button type="button" class="theme-toggle" data-action="toggleDark" aria-label="Ganti tema">
+          ${state.dark ? MOON_SVG : SUN_SVG}
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="pill pill-teal">Data Run</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Dari (m)</label>
+            <input type="number" step="1" value="${state.fromM}" data-field="fromM" />
+          </div>
+          <div class="field">
+            <label>Sampai (m)</label>
+            <input type="number" step="1" value="${state.toM}" data-field="toM" />
+          </div>
+        </div>
+        <div class="total-run">
+          <span class="total-run-label">Total Run</span>
+          <span class="total-run-value">${d.totalRunM.toFixed(2)} m</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pill pill-navy">Segmen Material</div>
+        ${renderSegmentsHtml(d.segmentsView)}
+        <button type="button" class="add-seg-btn" data-action="addSegment">+ Tambah Segmen</button>
+      </div>
+
+      ${showDiagram ? `
+      <div class="card">
+        <div class="pill pill-gold">Diagram Core</div>
+        <div class="diagram-heading">Kondisi Aktual (Hasil Recovery)</div>
+        ${renderCoreRowsHtml(coreRows)}
+        <div class="diagram-total">Total panjang aktual recovery: <strong>${d.totalRecoveredCm.toFixed(1)} cm</strong></div>
+        ${d.valid ? `
+        <div class="insitu-block">
+          <div class="diagram-heading" style="margin:0 0 4px;">Kondisi In-Situ (Estimasi Sebelum Swelling)</div>
+          <div class="insitu-desc">Penampakan core seandainya tidak mengalami swelling — pakai panjang Interval hasil perhitungan, pas mengisi Total Run ${d.totalRunM.toFixed(2)} m.</div>
+          ${renderCoreRowsHtml(depthLogRows)}
+        </div>
+        ` : ''}
+        <div class="legend-row">
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--teal);"></span>Soft Material</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--navy);"></span>Hard Material</div>
+        </div>
+      </div>
+      ` : ''}
+
+      ${d.valid ? `
+      <div class="card">
+        <div class="pill pill-teal">Hasil Perhitungan</div>
+        <div class="stat-grid">
+          <div class="stat-cell"><div class="stat-label">Actual Run Soft</div><div class="stat-value">${d.actualRunSoft.toFixed(2)} cm</div></div>
+          <div class="stat-cell"><div class="stat-label">Total Aktual Soft</div><div class="stat-value">${d.sumSoft.toFixed(1)} cm</div></div>
+          <div class="stat-cell"><div class="stat-label">Hard Material</div><div class="stat-value">${d.sumHard.toFixed(1)} cm</div></div>
+        </div>
+        <div class="swell-banner">
+          <div>
+            <div class="swell-label">Faktor Swelling</div>
+            <div class="swell-sub">Pertumbuhan ${d.swellPercent.toFixed(1)}%</div>
+          </div>
+          <div class="swell-value">${d.overallFactor.toFixed(2)}×</div>
+        </div>
+        <div class="detail-box">
+          <div class="detail-title">Detail Kalkulasi</div>
+          <div>Actual Run Soft = Total Run − Total Hard</div>
+          <div class="detail-formula-indent">&nbsp;&nbsp;= ${d.overallDetail.runFormula}</div>
+          <div>Total Aktual Soft = Σ SM</div>
+          <div class="detail-formula-indent">&nbsp;&nbsp;= ${d.overallDetail.sumFormula}</div>
+          <div>Faktor Swelling = Total Aktual Soft ÷ Actual Run Soft</div>
+          <div>&nbsp;&nbsp;= ${d.overallDetail.factorFormula}</div>
+        </div>
+        <div class="rincian-title">Rincian per Segmen Soft Material</div>
+        ${d.softResults.map(r => `
+          <div class="rincian-row">
+            <div class="rincian-top">
+              <div>
+                <div class="rincian-name">${r.label}</div>
+                <div class="rincian-actual">Aktual ${r.length} cm</div>
+              </div>
+              <div class="rincian-right">
+                <div class="rincian-interval">Interval: <strong style="color:var(--text-primary);">${r.interval} cm</strong></div>
+                <div class="rincian-recover">Recovery: <strong style="color:var(--teal);">${r.recover}×</strong></div>
+              </div>
+            </div>
+            <div class="rincian-formula">
+              <div>Interval(${r.label}) = ${r.intervalFormula}</div>
+              <div>Recovery(${r.label}) = ${r.recoverFormula}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      ` : `
+      <div class="error-banner">
+        <div class="error-badge">!</div>
+        <div class="error-text">${d.errorMsg}</div>
+      </div>
+      `}
+    `;
+  }
+
+  app.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn || btn.disabled) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id ? Number(btn.dataset.id) : null;
+
+    if (action === 'toggleDark') {
+      state.dark = !state.dark;
+      saveDarkPref(state.dark);
+    } else if (action === 'addSegment') {
+      state.segments.push({ id: state.nextId++, type: 'soft', length: 0 });
+    } else if (action === 'removeSegment') {
+      state.segments = state.segments.filter(s => s.id !== id);
+    } else if (action === 'setSoft') {
+      state.segments = state.segments.map(s => s.id === id ? { ...s, type: 'soft' } : s);
+    } else if (action === 'setHard') {
+      state.segments = state.segments.map(s => s.id === id ? { ...s, type: 'hard' } : s);
+    } else if (action === 'moveUp' || action === 'moveDown') {
+      const dir = action === 'moveUp' ? -1 : 1;
+      const idx = state.segments.findIndex(s => s.id === id);
+      const newIdx = idx + dir;
+      if (newIdx >= 0 && newIdx < state.segments.length) {
+        const arr = state.segments.slice();
+        const tmp = arr[idx]; arr[idx] = arr[newIdx]; arr[newIdx] = tmp;
+        state.segments = arr;
+      }
+    }
+    render();
+  });
+
+  app.addEventListener('focusin', e => {
+    const el = e.target;
+    if (el.tagName === 'INPUT' && el.type === 'number' && el.value === '0') {
+      el.value = '';
+    }
+  });
+
+  app.addEventListener('change', e => {
+    const field = e.target.dataset.field;
+    if (!field) return;
+    if (field === 'fromM') {
+      state.fromM = Math.round(Number(e.target.value) || 0);
+    } else if (field === 'toM') {
+      state.toM = Math.round(Number(e.target.value) || 0);
+    } else if (field === 'segLength') {
+      const id = Number(e.target.dataset.id);
+      const val = Math.max(0, Number(e.target.value) || 0);
+      state.segments = state.segments.map(s => s.id === id ? { ...s, length: val } : s);
+    }
+    render();
+  });
+
+  render();
+</script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log('SW registered'))
+          .catch(e => console.warn('SW failed:', e));
+      });
+    }
+  </script>
+
+  <script>
+    let deferredPrompt;
+    const banner = document.getElementById('installBanner');
+    const installBtn = document.getElementById('installBtn');
+    const dismissBtn = document.getElementById('dismissBtn');
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      banner.style.display = 'flex';
+    });
+
+    installBtn && installBtn.addEventListener('click', async () => {
+      banner.style.display = 'none';
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      }
+    });
+
+    dismissBtn && dismissBtn.addEventListener('click', () => {
+      banner.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      banner.style.display = 'none';
+      deferredPrompt = null;
+    });
+  </script>
+</body>
+</html>
