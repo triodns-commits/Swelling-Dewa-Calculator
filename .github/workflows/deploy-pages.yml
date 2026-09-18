@@ -3,7 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ claude/optimistic-gauss-9jn2t5 ]
-    paths: [ 'swelling-material/**' ]
   workflow_dispatch:
 
 permissions:
