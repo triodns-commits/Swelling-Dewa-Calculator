@@ -65,7 +65,9 @@ Catatan yang dibatalkan tidak dihapus dari Sheet. Kolom Jenis diganti "Batal", j
 | `CRON_SECRET` | kata acak lain, panjang |
 | `TEMPLATE_NAME` | (opsional) lihat bagian "Laporan otomatis" |
 | `ANTHROPIC_API_KEY` | (opsional) untuk baca foto struk, langkah 15 |
-| `RECEIPT_MODEL` | (opsional) ganti model pembaca struk. Bawaan: `claude-haiku-5-5` |
+| `RECEIPT_MODEL` | (opsional) ganti model Claude pembaca struk. Bawaan: `claude-haiku-5-5` |
+| `GEMINI_API_KEY` | (opsional, gratis) alternatif pembaca struk, lihat "Pilihan pembaca struk" |
+| `GEMINI_MODEL` | (opsional) bawaan: `gemini-flash-latest` |
 
 12. Klik **Deploy**. Alamat webhook kamu: `https://NAMA-PROJECT.vercel.app/api/webhook`.
 
@@ -91,8 +93,21 @@ Kategori: Belanja
 - **Selalu lirik balasannya.** Pembacaan AI bisa salah (struk kusut, tulisan pudar, atau diskon yang membingungkan). Kalau angkanya meleset, balas `koreksi 90rb` atau `hapus`.
 - Tanggal di struk dipakai hanya kalau masuk akal (hari ini sampai 45 hari lalu). Selain itu bot memakai tanggal hari ini dan memberi tahu.
 - Foto dibaca oleh AI Anthropic (Claude), jadi fotonya dikirim ke sana. Jangan foto struk yang memuat data yang tidak mau kamu bagikan, misalnya kartu atau KTP.
-- Butuh **kunci API Anthropic** (langkah 15 di bawah). Pakai kredit bayar-per-pemakaian dan biaya per struk kecil. [Guessing] Perkiraanku di bawah Rp 100 per struk dengan model hemat bawaan, tapi cek harga resmi dan **pasang batas pengeluaran bulanan** di console Anthropic supaya tidak ada kejutan.
-- Fitur ini mati sendiri kalau `ANTHROPIC_API_KEY` tidak diisi. Perintah teks tetap jalan.
+- Butuh kunci AI untuk membaca foto. Ada dua pilihan, lihat "Pilihan pembaca struk" di bawah.
+- (Kunci Anthropic = langkah 15.) Pakai kredit bayar-per-pemakaian dan biaya per struk kecil. [Guessing] Perkiraanku di bawah Rp 100 per struk dengan model hemat bawaan, tapi cek harga resmi dan **pasang batas pengeluaran bulanan** di console Anthropic supaya tidak ada kejutan.
+- Fitur ini mati sendiri kalau `GEMINI_API_KEY` dan `ANTHROPIC_API_KEY` sama-sama kosong. Perintah teks tetap jalan.
+
+### Pilihan pembaca struk
+
+| | Gemini (Google) | Claude (Anthropic) |
+|---|---|---|
+| Biaya | Ada paket gratis dengan batas pemakaian | Bayar per pemakaian, kecil |
+| Privasi foto | **Di paket gratis, Google dapat memakai isi kiriman untuk memperbaiki produknya** | Tidak dipakai untuk melatih model secara bawaan lewat API [Likely, cek kebijakan terbaru] |
+| Variabel di Vercel | `GEMINI_API_KEY`, opsional `GEMINI_MODEL` | `ANTHROPIC_API_KEY`, opsional `RECEIPT_MODEL` |
+
+Kalau dua-duanya diisi, bot memakai Gemini.
+Cara dapat kunci Gemini: buka aistudio.google.com, login akun Google, klik **Get API key**. Kalau `GEMINI_MODEL` kosong, bot memakai `gemini-flash-latest`. Kalau Google mengganti atau menghapus nama itu, isi dengan model Flash yang ditandai gratis di AI Studio.
+Batas harian paket gratis dan ketersediaan di Indonesia belum bisa kupastikan dari sini, jadi cek di AI Studio. Kalau terlampaui, bot membalas "struk belum terbaca jelas" dan kamu tinggal mengetik manual.
 
 ## Laporan otomatis
 
@@ -107,7 +122,7 @@ Cara paling murah dan pasti: ketik `laporan lalu` sendiri tiap awal bulan. Balas
 - **Nomor tes Meta itu untuk pengembangan.** Batasnya 5 penerima, cukup untuk berdua. Meta pernah mengubah aturannya, jadi bukan jaminan seumur hidup. Kalau suatu hari hilang atau dibatasi, jalan keluarnya mendaftarkan nomor sendiri. Nomor itu lalu tidak bisa dipakai di aplikasi WhatsApp biasa, kecuali lewat fitur *coexistence* di aplikasi WhatsApp Business.
 - Pesan dari nomor selain yang ada di `ALLOWED` diam-diam diabaikan.
 - Buku kas bersama berarti pasangan bisa melihat semua pengeluaran kamu. Pastikan kalian memang sepakat soal itu.
-- Bot ini belum diuji ke Meta, Vercel, Google, dan Anthropic sungguhan. Yang diuji sebatas logika, tanda tangan keamanan, penolakan pesan dobel, pembacaan struk, dan jalur laporan dengan perangkat palsu (`npm test`). Kualitas pembacaan struk asli (foto miring, tulisan pudar) belum pernah dicoba. Kalau bot diam, lihat **Logs** di dashboard Vercel.
+- Bot ini belum diuji ke Meta, Vercel, Google (Sheets dan Gemini), dan Anthropic sungguhan. Yang diuji sebatas logika, tanda tangan keamanan, penolakan pesan dobel, pembacaan struk, dan jalur laporan dengan perangkat palsu (`npm test`). Kualitas pembacaan struk asli (foto miring, tulisan pudar) belum pernah dicoba. Kalau bot diam, lihat **Logs** di dashboard Vercel.
 
 ## Belum ada
 

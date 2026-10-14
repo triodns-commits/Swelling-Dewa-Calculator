@@ -47,3 +47,38 @@ export async function readReceipt({ bytes, mime, apiKey, model = 'claude-haiku-5
   const call = (data.content || []).find(c => c.type === 'tool_use');
   return call ? call.input : null;
 }
+
+// Alternatif gratis: Google Gemini (paket gratis Google AI Studio). Nama model bisa diganti lewat GEMINI_MODEL.
+const GEMINI_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    is_receipt: { type: 'BOOLEAN' },
+    total: { type: 'INTEGER', description: TOOL.input_schema.properties.total.description },
+    merchant: { type: 'STRING' },
+    tanggal: { type: 'STRING', description: TOOL.input_schema.properties.tanggal.description },
+    kategori: { type: 'STRING', enum: KATEGORI_LIST },
+    ringkasan: { type: 'STRING', description: TOOL.input_schema.properties.ringkasan.description }
+  },
+  required: ['is_receipt']
+};
+
+export async function readReceiptGemini({ bytes, mime, apiKey, model = 'gemini-flash-latest', fetchImpl = fetch }) {
+  const r = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: mime || 'image/jpeg', data: Buffer.from(bytes).toString('base64') } },
+          { text: PROMPT }
+        ]
+      }],
+      generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_SCHEMA, temperature: 0 }
+    })
+  });
+  if (!r.ok) throw new Error(`Gemini API ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const data = await r.json();
+  const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('');
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}

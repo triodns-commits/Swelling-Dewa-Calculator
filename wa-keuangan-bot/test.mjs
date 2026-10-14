@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { parseAmount, parseMonth, prevMonthKey } from './lib/logic.js';
 import { createHandlers, parseUsers } from './lib/handlers.js';
 import { verifySignature, OUTSIDE_WINDOW, downloadMedia } from './lib/whatsapp.js';
-import { readReceipt as bacaStruk } from './lib/receipt.js';
+import { readReceipt as bacaStruk, readReceiptGemini } from './lib/receipt.js';
 
 // --- parsing angka & bulan
 for (const [i, o] of [['25rb', 25000], ['25k', 25000], ['1,5jt', 1500000], ['5jt', 5000000],
@@ -141,6 +141,17 @@ assert.deepEqual(req.b.tool_choice, { type: 'tool', name: 'catat_struk' });
 assert.equal(req.b.messages[0].content[0].source.media_type, 'image/png');
 assert.equal(req.b.messages[0].content[0].source.data, Buffer.from('abc').toString('base64'));
 await assert.rejects(bacaStruk({ bytes: Buffer.from('a'), apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 401, text: async () => 'no' }) }), /401/);
+// Gemini
+let g;
+const gOut = await readReceiptGemini({ bytes: Buffer.from('abc'), mime: 'image/jpeg', apiKey: 'gk', model: 'gemini-x', fetchImpl: async (u, i) => { g = { u, h: i.headers, b: JSON.parse(i.body) }; return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"is_receipt":true,"total":12000,"merchant":"Warung"}' }] } }] }) }; } });
+assert.deepEqual(gOut, { is_receipt: true, total: 12000, merchant: 'Warung' });
+assert.equal(g.u, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-x:generateContent'); assert.equal(g.h['x-goog-api-key'], 'gk');
+assert.equal(g.b.generationConfig.responseMimeType, 'application/json');
+assert.equal(g.b.contents[0].parts[0].inline_data.data, Buffer.from('abc').toString('base64'));
+const gBad = t => readReceiptGemini({ bytes: Buffer.from('a'), apiKey: 'k', fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: t }] } }] }) }) });
+assert.equal(await gBad('bukan json'), null);
+assert.equal(await readReceiptGemini({ bytes: Buffer.from('a'), apiKey: 'k', fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [] }) }) }), null);
+await assert.rejects(readReceiptGemini({ bytes: Buffer.from('a'), apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 429, text: async () => 'quota' }) }), /429/);
 const urls = [];
 const media = await downloadMedia({ mediaId: 'M1', token: 't', fetchImpl: async (u, i) => { urls.push([u, i.headers.Authorization]); return u.includes('graph') ? { ok: true, json: async () => ({ url: 'https://cdn/x', mime_type: 'image/jpeg' }) } : { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }; } });
 assert.equal(media.mime, 'image/jpeg'); assert.equal(media.bytes.length, 3); assert.deepEqual(urls.map(x => x[1]), ['Bearer t', 'Bearer t']);
