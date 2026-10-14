@@ -1,7 +1,8 @@
 // Merakit bagian-bagian asli (Meta + Google Sheet) dari environment variable Vercel.
 import { createHandlers } from './handlers.js';
 import { createSheetsStore } from './sheets.js';
-import { sendText, sendTemplate } from './whatsapp.js';
+import { sendText, sendTemplate, downloadMedia } from './whatsapp.js';
+import { readReceipt } from './receipt.js';
 
 let cached;
 
@@ -15,6 +16,11 @@ export function getHandlers() {
       sheetId: env.SHEET_ID,
       credentials: JSON.parse(env.GOOGLE_SERVICE_ACCOUNT)
     }),
+    readReceipt: env.ANTHROPIC_API_KEY ? async msg => {
+      const media = await downloadMedia({ mediaId: msg.image.id, token: env.WHATSAPP_TOKEN });
+      if (!media) return null;
+      return readReceipt({ ...media, apiKey: env.ANTHROPIC_API_KEY, model: env.RECEIPT_MODEL || undefined });
+    } : undefined,
     sendText: o => sendText({ ...cfg, ...o }),
     sendTemplate: o => sendTemplate({ ...cfg, ...o })
   });

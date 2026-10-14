@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions';
 import { getHandlers } from '../lib/runtime.js';
 
 export async function GET(request) {
@@ -6,5 +7,5 @@ export async function GET(request) {
 
 export async function POST(request) {
   const raw = await request.text(); // mentah, dibutuhkan untuk cek tanda tangan
-  return getHandlers().receive(raw, request.headers.get('x-hub-signature-256'));
+  return getHandlers().receive(raw, request.headers.get('x-hub-signature-256'), waitUntil);
 }

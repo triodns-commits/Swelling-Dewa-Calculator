@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { parseAmount, parseMonth, prevMonthKey } from './lib/logic.js';
 import { createHandlers, parseUsers } from './lib/handlers.js';
-import { verifySignature, OUTSIDE_WINDOW } from './lib/whatsapp.js';
+import { verifySignature, OUTSIDE_WINDOW, downloadMedia } from './lib/whatsapp.js';
+import { readReceipt as bacaStruk } from './lib/receipt.js';
 
 // --- parsing angka & bulan
 for (const [i, o] of [['25rb', 25000], ['25k', 25000], ['1,5jt', 1500000], ['5jt', 5000000],
@@ -25,14 +26,17 @@ const rows = [];
 const store = {
   async listRows() { return rows.map((r, i) => ({ ...r, rowNum: i + 2 })); },
   async append(r) { rows.push({ ...r }); },
-  async markVoid(n) { rows[n - 2].jenis = 'Batal'; }
+  async markVoid(n) { rows[n - 2].jenis = 'Batal'; },
+  async setAmount(n, v) { rows[n - 2].jumlah = v; }
 };
 const sent = [];
 let failText = null;
 const sendText = async o => { if (failText) { const e = new Error('x'); e.code = failText; throw e; } sent.push(o); };
 const sendTemplate = async o => { sent.push({ ...o, template: true }); };
 const env = { ALLOWED: '62811:Trio,62822:Istri', APP_SECRET: 's3cret', VERIFY_TOKEN: 'v', CRON_SECRET: 'c', TEMPLATE_NAME: 'laporan_siap' };
-const h = createHandlers({ store, sendText, sendTemplate, env, now: () => okt });
+let struk = { is_receipt: true, total: 87500, merchant: 'Indomaret', tanggal: '2026-10-12', kategori: 'Belanja', ringkasan: 'beras, telur' };
+const readReceipt = async () => struk;
+const h = createHandlers({ store, sendText, sendTemplate, readReceipt, env, now: () => okt });
 
 const body = (from, text, id) => JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from, id, type: 'text', text: { body: text } }] } }] }] });
 const sign = raw => 'sha256=' + crypto.createHmac('sha256', env.APP_SECRET).update(raw).digest('hex');
@@ -87,10 +91,61 @@ assert.match(sent.at(-1).body, /Belum ada catatanmu/);
 await kirim('62822', 'saldo', 's1');
 assert.match(sent.at(-1).body, /Rp 4\.900\.000/);
 
-// pesan non-teks
-const rawImg = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: '62811', id: 'img1', type: 'image' }] } }] }] });
-await h.receive(rawImg, sign(rawImg));
-assert.match(sent.at(-1).body, /pesan teks/);
+// foto struk
+const foto = (from, id, caption) => { const r = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from, id, type: 'image', image: { id: 'media-' + id, caption } }] } }] }] }); return h.receive(r, sign(r)); };
+await foto('62811', 'img1', 'untuk dapur');
+assert.equal(rows.at(-1).jumlah, 87500); assert.equal(rows.at(-1).waktu, '2026-10-12 12:00:00');
+assert.equal(rows.at(-1).catatan, 'Struk - Indomaret - untuk dapur'); assert.equal(rows.at(-1).kategori, 'Belanja');
+console.log(sent.at(-1).body);
+assert.match(sent.at(-1).body, /Rp 87\.500/); assert.match(sent.at(-1).body, /koreksi/);
+const jumlahBaris = rows.length;
+await foto('62811', 'img1'); // kiriman ulang
+assert.equal(rows.length, jumlahBaris);
+// koreksi & hapus bekerja pada struk
+await kirim('62811', 'koreksi 90rb', 'k1');
+assert.equal(rows.at(-1).jumlah, 90000);
+await kirim('62811', 'koreksi', 'k2'); assert.match(sent.at(-1).body, /Format: koreksi/);
+await kirim('62811', 'hapus', 'h3'); assert.equal(rows.at(-1).jenis, 'Batal');
+// tanggal tidak masuk akal (masa depan / terlalu lama) -> pakai hari ini
+struk = { ...struk, tanggal: '2027-01-01' }; await foto('62811', 'img2');
+assert.equal(rows.at(-1).waktu.slice(0, 10), '2026-10-14'); assert.match(sent.at(-1).body, /tidak dipakai/);
+struk = { ...struk, tanggal: '2025-01-01' }; await foto('62811', 'img3');
+assert.equal(rows.at(-1).waktu.slice(0, 10), '2026-10-14');
+// tidak terbaca -> tidak dicatat, tidak menebak
+const sebelum = rows.length;
+for (const [i, bad] of [{ is_receipt: false }, { is_receipt: true }, { is_receipt: true, total: -5 }, { is_receipt: true, total: 12.5 }, null].entries()) {
+  struk = bad; await foto('62811', 'bad' + i);
+  assert.equal(rows.length, sebelum); assert.match(sent.at(-1).body, /belum terbaca jelas/);
+}
+// AI error -> diperlakukan tidak terbaca; tanpa kunci AI -> fitur mati
+const hErr = createHandlers({ store, sendText, sendTemplate, readReceipt: async () => { throw new Error('boom'); }, env, now: () => okt });
+const rE = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: '62811', id: 'e9', type: 'image', image: { id: 'm' } }] } }] }] });
+await hErr.receive(rE, sign(rE)); assert.match(sent.at(-1).body, /belum terbaca jelas/);
+const hOff = createHandlers({ store, sendText, sendTemplate, env, now: () => okt });
+await hOff.receive(rE.replace('e9', 'e10'), sign(rE.replace('e9', 'e10'))); assert.match(sent.at(-1).body, /belum diaktifkan/);
+// stiker/suara
+const rS = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: '62811', id: 's9', type: 'audio' }] } }] }] });
+await h.receive(rS, sign(rS)); assert.match(sent.at(-1).body, /teks dan foto/);
+// defer (waitUntil): langsung 200, kerja tetap selesai
+let tertunda; const n0 = rows.length; struk = { is_receipt: true, total: 1000, merchant: 'X', kategori: 'Lainnya' };
+const rD = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: '62811', id: 'd1', type: 'image', image: { id: 'm' } }] } }] }] });
+assert.equal((await h.receive(rD, sign(rD), p => { tertunda = p; })).status, 200);
+await tertunda; assert.equal(rows.length, n0 + 1);
+
+// --- pembaca struk & unduh media (jaringan dipalsukan)
+let req;
+const out = await bacaStruk({ bytes: Buffer.from('abc'), mime: 'image/png', apiKey: 'k', fetchImpl: async (u, i) => { req = { u, ...i, b: JSON.parse(i.body) }; return { ok: true, json: async () => ({ content: [{ type: 'text', text: 'hi' }, { type: 'tool_use', input: { is_receipt: true, total: 5000 } }] }) }; } });
+assert.deepEqual(out, { is_receipt: true, total: 5000 });
+assert.equal(req.u, 'https://api.anthropic.com/v1/messages'); assert.equal(req.headers['x-api-key'], 'k');
+assert.deepEqual(req.b.tool_choice, { type: 'tool', name: 'catat_struk' });
+assert.equal(req.b.messages[0].content[0].source.media_type, 'image/png');
+assert.equal(req.b.messages[0].content[0].source.data, Buffer.from('abc').toString('base64'));
+await assert.rejects(bacaStruk({ bytes: Buffer.from('a'), apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 401, text: async () => 'no' }) }), /401/);
+const urls = [];
+const media = await downloadMedia({ mediaId: 'M1', token: 't', fetchImpl: async (u, i) => { urls.push([u, i.headers.Authorization]); return u.includes('graph') ? { ok: true, json: async () => ({ url: 'https://cdn/x', mime_type: 'image/jpeg' }) } : { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }; } });
+assert.equal(media.mime, 'image/jpeg'); assert.equal(media.bytes.length, 3); assert.deepEqual(urls.map(x => x[1]), ['Bearer t', 'Bearer t']);
+const besar = await downloadMedia({ mediaId: 'M', token: 't', fetchImpl: async u => u.includes('graph') ? { ok: true, json: async () => ({ url: 'u', mime_type: 'image/jpeg' }) } : { ok: true, arrayBuffer: async () => new ArrayBuffer(6 * 1024 * 1024) } });
+assert.equal(besar, null);
 
 // laporan bulanan
 rows.push({ waktu: '2026-09-20 10:00:00', nama: 'Trio', nomor: '62811', jenis: 'Keluar', jumlah: 50000, kategori: 'Lainnya', catatan: '', msgId: 'old' });

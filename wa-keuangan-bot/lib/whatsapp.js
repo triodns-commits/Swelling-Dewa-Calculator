@@ -35,3 +35,17 @@ export const sendTemplate = ({ to, name, lang = 'id', ...cfg }) =>
 
 /** Kode error Meta: kamu menulis duluan di luar jendela 24 jam, wajib pakai template. */
 export const OUTSIDE_WINDOW = 131047;
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // batas gambar Claude
+
+/** Unduh foto kiriman pengguna. Mengembalikan { bytes, mime } atau null kalau terlalu besar. */
+export async function downloadMedia({ mediaId, token, fetchImpl = fetch }) {
+  const auth = { Authorization: `Bearer ${token}` };
+  const meta = await fetchImpl(`${GRAPH}/${mediaId}`, { headers: auth });
+  if (!meta.ok) throw new Error(`Media meta ${meta.status}`);
+  const { url, mime_type: mime } = await meta.json();
+  const file = await fetchImpl(url, { headers: auth });
+  if (!file.ok) throw new Error(`Media download ${file.status}`);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  return bytes.length > MAX_IMAGE_BYTES ? null : { bytes, mime };
+}

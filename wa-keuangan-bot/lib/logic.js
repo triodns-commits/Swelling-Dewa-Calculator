@@ -17,9 +17,13 @@ const KATEGORI_MASUK = {
   'Usaha': ['jual', 'jualan', 'omzet', 'usaha', 'proyek']
 };
 
+export const KATEGORI_LIST = [...Object.keys(KATEGORI_KELUAR), 'Lainnya'];
+
 export const BANTUAN = 'Perintah:\n' +
   '• keluar 25rb makan siang\n' +
   '• masuk 5jt gaji\n' +
+  '• kirim FOTO struk -> dibaca otomatis\n' +
+  '• koreksi 90rb  (ubah jumlah catatan terakhirmu)\n' +
   '• saldo\n' +
   '• laporan  (atau: laporan 9, laporan lalu)\n' +
   '• hapus  (membatalkan catatan terakhirmu)';
@@ -129,6 +133,50 @@ export function report(allRows, key) {
   return msg;
 }
 
+const lastOf = (rows, user) => {
+  const mine = aktif(rows).filter(r => r.nomor === user.nomor);
+  return mine[mine.length - 1];
+};
+
+const SEHARI = 86400000;
+
+/**
+ * Foto struk. `receipt` = hasil pembacaan AI: { is_receipt, total, merchant, tanggal, kategori, ringkasan }.
+ * Hanya dicatat kalau total terbaca jelas; kalau ragu, minta input manual (tidak menebak).
+ */
+export async function handleReceipt({ store, user, receipt, caption, now, msgId }) {
+  const r = receipt;
+  if (!r || !r.is_receipt || !Number.isInteger(r.total) || r.total <= 0) {
+    return 'Struk belum terbaca jelas, jadi belum kucatat. Foto ulang lebih dekat dan terang, atau ketik manual:\nkeluar 87500 belanja';
+  }
+  const rows = await store.listRows();
+  if (msgId && rows.some(x => x.msgId === msgId)) return null;
+
+  // Tanggal struk dipakai hanya jika masuk akal (hari ini s/d 45 hari lalu); kalau tidak, pakai waktu sekarang.
+  const today = wib(now).slice(0, 10);
+  let waktu = wib(now);
+  let tglInfo = 'hari ini';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(r.tanggal || '') && r.tanggal !== today) {
+    const diff = (Date.parse(today + 'T00:00:00Z') - Date.parse(r.tanggal + 'T00:00:00Z')) / SEHARI;
+    if (diff > 0 && diff <= 45) { waktu = r.tanggal + ' 12:00:00'; tglInfo = r.tanggal; }
+    else tglInfo = `hari ini (tanggal di struk "${r.tanggal}" tidak dipakai)`;
+  }
+
+  const kategori = KATEGORI_LIST.includes(r.kategori) ? r.kategori : 'Lainnya';
+  const catatan = ['Struk', r.merchant, caption].filter(Boolean).join(' - ');
+  const row = { waktu, nama: user.nama, nomor: user.nomor, jenis: 'Keluar', jumlah: r.total, kategori, catatan, msgId: msgId || '' };
+  await store.append(row);
+  const t = totals(inMonth([...rows, row], monthKey(now)));
+  return `🧾 Struk terbaca dan dicatat oleh ${user.nama}\n` +
+    `Toko    : ${r.merchant || '(tidak terbaca)'}\n` +
+    `Total   : ${rp(r.total)}\n` +
+    `Tanggal : ${tglInfo}\n` +
+    `Kategori: ${kategori}\n` +
+    (r.ringkasan ? `Barang  : ${r.ringkasan}\n` : '') +
+    `Saldo bulan ini (berdua): ${rp(t.masuk - t.keluar)}\n\n` +
+    'Salah baca? Balas *koreksi 90rb* untuk ubah jumlah, atau *hapus* untuk membatalkan.';
+}
+
 /**
  * Proses satu pesan. Mengembalikan teks balasan (atau null kalau tidak perlu membalas).
  * user = { nomor, nama }; store = { listRows, append, markVoid }.
@@ -165,9 +213,17 @@ export async function handle({ store, user, text, now, msgId }) {
     return `Saldo bulan ini (berdua): ${rp(t.masuk - t.keluar)}\n(masuk ${rp(t.masuk)}, keluar ${rp(t.keluar)})`;
   }
 
+  if (cmd === 'koreksi') {
+    const amount = parseAmount(parts[1]);
+    if (!amount) return 'Format: koreksi 90rb';
+    const last = lastOf(await store.listRows(), user);
+    if (!last) return 'Belum ada catatanmu yang bisa dikoreksi.';
+    await store.setAmount(last.rowNum, amount);
+    return `✏️ Diubah: ${last.jenis} ${rp(last.jumlah)} -> ${rp(amount)}${last.catatan ? ' (' + last.catatan + ')' : ''}`;
+  }
+
   if (cmd === 'hapus') {
-    const rows = aktif(await store.listRows()).filter(r => r.nomor === user.nomor);
-    const last = rows[rows.length - 1];
+    const last = lastOf(await store.listRows(), user);
     if (!last) return 'Belum ada catatanmu yang bisa dibatalkan.';
     await store.markVoid(last.rowNum);
     return `🗑️ Dibatalkan: ${last.jenis} ${rp(last.jumlah)}${last.catatan ? ' (' + last.catatan + ')' : ''}`;

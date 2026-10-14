@@ -47,6 +47,12 @@ export function createSheetsStore({ sheetId, credentials, tab = 'Transaksi' }) {
       });
     },
 
+    async setAmount(rowNum, jumlah) {
+      await call(`/values/${range('E' + rowNum)}?valueInputOption=RAW`, {
+        method: 'PUT', body: JSON.stringify({ values: [[jumlah]] })
+      });
+    },
+
     /** Tidak menghapus baris; hanya mengganti Jenis jadi "Batal" supaya ada jejak. */
     async markVoid(rowNum) {
       await call(`/values/${range('D' + rowNum)}?valueInputOption=RAW`, {

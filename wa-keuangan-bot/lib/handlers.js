@@ -1,5 +1,5 @@
 // Menyambung semua bagian: webhook Meta, balasan, dan laporan bulanan.
-import { handle, report, prevMonthKey } from './logic.js';
+import { handle, handleReceipt, report, prevMonthKey } from './logic.js';
 import { verifySignature, OUTSIDE_WINDOW } from './whatsapp.js';
 
 /** "628111:Trio,628222:Istri" -> { '628111': {nomor, nama}, ... } */
@@ -13,9 +13,22 @@ export function parseUsers(s) {
   return users;
 }
 
-export function createHandlers({ store, sendText, sendTemplate, env, now = () => new Date() }) {
+// readReceipt(msg) -> data struk | null; opsional (tanpa itu, fitur foto mati).
+export function createHandlers({ store, sendText, sendTemplate, readReceipt, env, now = () => new Date() }) {
   const users = parseUsers(env.ALLOWED);
   const seen = new Set(); // cadangan anti-dobel untuk perintah yang tidak menyimpan ID pesan
+
+  async function balas(msg, user) {
+    const ctx = { store, user, now: now(), msgId: msg.id };
+    if (msg.type === 'text') return handle({ ...ctx, text: msg.text.body });
+    if (msg.type === 'image') {
+      if (!readReceipt) return 'Fitur baca foto struk belum diaktifkan.';
+      let receipt = null;
+      try { receipt = await readReceipt(msg); } catch (err) { console.error(err); }
+      return handleReceipt({ ...ctx, receipt, caption: msg.image.caption });
+    }
+    return 'Aku baru bisa membaca pesan teks dan foto struk.';
+  }
 
   return {
     /** Meta memanggil ini sekali saat kamu menyimpan webhook (GET). */
@@ -26,8 +39,11 @@ export function createHandlers({ store, sendText, sendTemplate, env, now = () =>
       return new Response('forbidden', { status: 403 });
     },
 
-    /** Pesan masuk (POST). */
-    async receive(rawBody, signature) {
+    /**
+     * Pesan masuk (POST). Kalau `defer` (waitUntil Vercel) diberikan, Meta langsung dijawab 200
+     * dan pekerjaan lanjut di belakang layar, supaya Meta tidak mengirim ulang saat baca foto lama.
+     */
+    async receive(rawBody, signature, defer) {
       if (!verifySignature(rawBody, signature, env.APP_SECRET)) {
         return new Response('bad signature', { status: 401 });
       }
@@ -38,21 +54,21 @@ export function createHandlers({ store, sendText, sendTemplate, env, now = () =>
         .flatMap(e => e.changes || [])
         .flatMap(c => (c.value && c.value.messages) || []);
 
-      for (const msg of messages) {
-        const user = users[msg.from];
-        if (!user || seen.has(msg.id)) continue;
-        seen.add(msg.id);
-        try {
-          const text = msg.type === 'text' ? msg.text.body : null;
-          const reply = text === null
-            ? 'Aku baru bisa membaca pesan teks.'
-            : await handle({ store, user, text, now: now(), msgId: msg.id });
-          if (reply) await sendText({ to: msg.from, body: reply });
-        } catch (err) {
-          console.error(err);
-          try { await sendText({ to: msg.from, body: 'Maaf, ada gangguan. Coba kirim ulang sebentar lagi.' }); } catch { /* abaikan */ }
+      const work = (async () => {
+        for (const msg of messages) {
+          const user = users[msg.from];
+          if (!user || seen.has(msg.id)) continue;
+          seen.add(msg.id);
+          try {
+            const reply = await balas(msg, user);
+            if (reply) await sendText({ to: msg.from, body: reply });
+          } catch (err) {
+            console.error(err);
+            try { await sendText({ to: msg.from, body: 'Maaf, ada gangguan. Coba kirim ulang sebentar lagi.' }); } catch { /* abaikan */ }
+          }
         }
-      }
+      })();
+      if (defer) defer(work); else await work;
       return new Response('ok'); // selalu 200 supaya Meta tidak mengirim ulang
     },
 
