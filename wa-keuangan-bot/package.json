@@ -1,0 +1,15 @@
+{
+  "name": "wa-keuangan-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "google-auth-library": "^9.15.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
