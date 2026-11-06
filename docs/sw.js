@@ -1,4 +1,4 @@
-const CACHE = 'swelling-v1';
+const CACHE = 'swelling-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
